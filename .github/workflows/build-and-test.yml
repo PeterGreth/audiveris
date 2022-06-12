@@ -29,11 +29,10 @@ jobs:
           key: ${{ runner.os }}-tessdata-eng-deu
 
       - name: Install tessdata files
+        if: steps.cache-tessdata.outputs.cache-hit != 'true'
         run: |
-          mkdir tessdata
-          wget -q https://github.com/tesseract-ocr/tessdata/raw/3.04.00/eng.traineddata
-          wget -q https://github.com/tesseract-ocr/tessdata/raw/3.04.00/deu.traineddata
-          mv *.traineddata "$TESSDATA_PREFIX"
+          chmod +x ${GITHUB_WORKSPACE}/.github/install-tessdata.sh 
+          ${GITHUB_WORKSPACE}/.github/install-tessdata.sh eng deu
 
       - name: Build & Test Audiveris
         uses: gradle/gradle-build-action@v2.2.0
