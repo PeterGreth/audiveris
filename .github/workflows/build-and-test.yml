@@ -14,15 +14,24 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
       - name: Setup Java 17
         uses: actions/setup-java@v3
         with:
           java-version: 17
           distribution: zulu
-      - name: Install Tesseract language files
-        uses: actions/install-tessdata@v1
+
+      - name: Get cached tessdata files
+        id: cache-tessdata
+        uses: actions/cache@v3
         with:
-          language: eng
+          path: ${{ TESSDATA_PREFIX }}
+          key: ${{ runner.os }}-tessdata-eng-deu
+
+      - name: Install tessdata files
+        if: steps.cache-tessdata.outputs.cache-hit != 'true'
+        run: install-tessdata.sh eng deu
+
       - name: Build & Test Audiveris
         uses: gradle/gradle-build-action@v2.2.0
         with:
