@@ -31,7 +31,6 @@ jobs:
       - name: Install tessdata files
         if: steps.cache-tessdata.outputs.cache-hit != 'true'
         run: |
-          chmod +x ${GITHUB_WORKSPACE}/.github/install-tessdata.sh 
           ${GITHUB_WORKSPACE}/.github/install-tessdata.sh eng deu
 
       - name: Build & Test Audiveris
