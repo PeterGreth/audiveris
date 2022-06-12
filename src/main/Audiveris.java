@@ -26,7 +26,7 @@
  * Test
  * @author Hervé Bitteur
  */
-public final class Audiveris
+public final class Audiveri
 {
     //~ Constructors -------------------------------------------------------------------------------
 
