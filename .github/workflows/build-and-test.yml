@@ -20,14 +20,9 @@ jobs:
           java-version: 17
           distribution: zulu
       - name: Install Tesseract language files
-        run: |
-          mkdir tessdata
-          wget -q https://github.com/tesseract-ocr/tessdata/raw/3.04.00/eng.traineddata
-          # wget -q https://github.com/tesseract-ocr/tessdata/raw/3.04.00/deu.traineddata
-          mv *.traineddata "$TESSDATA_PREFIX"
-          echo "Tessdata:"
-          ls "$TESSDATA_PREFIX"
-
+        uses: actions/install-tessdata@v1
+        with:
+          language: eng
       - name: Build & Test Audiveris
         uses: gradle/gradle-build-action@v2.2.0
         with:

@@ -1,0 +1,17 @@
+name: Install Tessdata
+description: Installs Tesseract 3.04.00 language data file in the TESSDATA_PREFIX directory
+inputs:
+  language:
+    description: The language to install (e.g. eng, deu)
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Create tessdata directory if it doesn't exist
+      run: |
+        mkdir -p "$TESSDATA_PREFIX"
+    - name: Install language
+      run: |
+        export filename="${{inputs.language}}.traineddata"
+        wget -q "https://github.com/tesseract-ocr/tessdata/raw/3.04.00/$filename"
+        mv "$filename" "$TESSDATA_PREFIX"
