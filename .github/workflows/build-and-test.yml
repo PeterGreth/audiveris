@@ -25,7 +25,7 @@ jobs:
         id: cache-tessdata
         uses: actions/cache@v3
         with:
-          path: ${{ TESSDATA_PREFIX }}
+          path: ${{ env.TESSDATA_PREFIX }}
           key: ${{ runner.os }}-tessdata-eng-deu
 
       - name: Install tessdata files
