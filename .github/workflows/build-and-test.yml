@@ -1,0 +1,34 @@
+name: Build & Test Audiveris
+
+on:
+  - push
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      TESSDATA_PREFIX: /home/runner/work/audiveris/audiveris/tessdata
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup Java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: zulu
+      - name: Install Tesseract language files
+        run: |
+          mkdir tessdata
+          wget -q https://github.com/tesseract-ocr/tessdata/raw/3.04.00/eng.traineddata
+          # wget -q https://github.com/tesseract-ocr/tessdata/raw/3.04.00/deu.traineddata
+          mv *.traineddata "$TESSDATA_PREFIX"
+          echo "Tessdata:"
+          ls "$TESSDATA_PREFIX"
+
+      - name: Build & Test Audiveris
+        uses: gradle/gradle-build-action@v2.2.0
+        with:
+          arguments: build
