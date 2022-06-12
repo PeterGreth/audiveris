@@ -30,7 +30,7 @@ jobs:
 
       - name: Install tessdata files
         if: steps.cache-tessdata.outputs.cache-hit != 'true'
-        run: install-tessdata.sh eng deu
+        run: ${GITHUB_WORKSPACE}/.github/install-tessdata.sh eng deu
 
       - name: Build & Test Audiveris
         uses: gradle/gradle-build-action@v2.2.0
