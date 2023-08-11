@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TESSDATA_PREFIX: /home/runner/work/audiveris/audiveris/tessdata
+      TESSDATA_TAG: 3.04.00
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -29,11 +30,17 @@ jobs:
           key: ${{ runner.os }}-tessdata-eng-deu
 
       - name: Install tessdata files
-#        if: steps.cache-tessdata.outputs.cache-hit != 'true'
+        if: steps.cache-tessdata.outputs.cache-hit != 'true'
         run: |
-          ${GITHUB_WORKSPACE}/.github/install-tessdata.sh eng deu
+          ${GITHUB_WORKSPACE}/.github/install-tessdata.sh eng &&
+          ${GITHUB_WORKSPACE}/.github/install-tessdata.sh deu
 
-      - name: Build & Test Audiveris
+      - name: Build Audiveris
         uses: gradle/gradle-build-action@v2.2.0
         with:
-          arguments: build
+          arguments: build -x test
+
+      - name: Unit-Test Audiveris
+        uses: gradle/gradle-build-action@v2.2.0
+        with:
+          arguments: test
