@@ -27,7 +27,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.TESSDATA_PREFIX }}
-          key: ${{ runner.os }}-tessdata-eng-deu
+          key: ${{ runner.os }}-tessdata-${{ env.TESSDATA_TAG }}-eng-deu
 
       - name: Install tessdata files
         if: steps.cache-tessdata.outputs.cache-hit != 'true'
