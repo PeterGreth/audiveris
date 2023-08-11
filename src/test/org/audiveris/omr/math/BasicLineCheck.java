@@ -44,7 +44,7 @@ public class BasicLineCheck
 
         double d = l.distanceOf(0, 0);
         System.out.println("Distance of origin: " + d);
-        assertNears("Distance of origin", 6.19611613513818404d, d);
+        assertNears("Distance of origin", 0.19611613513818404d, d);
 
         double d1 = l.distanceOf(1, 0);
         System.out.println("Distance of (1,0): " + d1);

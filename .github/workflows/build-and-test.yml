@@ -36,11 +36,11 @@ jobs:
           ${GITHUB_WORKSPACE}/.github/install-tessdata.sh deu
 
       - name: Build Audiveris
-        uses: gradle/gradle-build-action@v2.2.0
+        uses: gradle/gradle-build-action@v2.7.0
         with:
           arguments: build -x test
 
       - name: Unit-Test Audiveris
-        uses: gradle/gradle-build-action@v2.2.0
+        uses: gradle/gradle-build-action@v2.7.0
         with:
           arguments: test
