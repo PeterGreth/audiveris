@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -21,18 +21,19 @@
 // </editor-fold>
 package org.audiveris.omr.ui.symbol;
 
-import org.audiveris.omr.glyph.Shape;
-import static org.audiveris.omr.ui.symbol.MusicFont.DEFAULT_INTERLINE;
-import static org.audiveris.omr.ui.symbol.MusicFont.getPointFont;
-import static org.audiveris.omr.ui.symbol.MusicFont.getPointSize;
+import static org.audiveris.omr.ui.symbol.OmrFont.RATIO_TINY;
 
-import java.awt.Dimension;
+import org.audiveris.omr.glyph.Shape;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.awt.geom.AffineTransform;
 
 /**
  * Class <code>BraceSymbol</code> displays a BRACE symbol: '{'
  * <p>
- * This class exists only to significantly modify the standard size of Bravura Brace symbol.
+ * This class exists only to significantly modify the standard size of Brace symbol.
  *
  * @author Hervé Bitteur
  */
@@ -41,38 +42,24 @@ public class BraceSymbol
 {
     //~ Static fields/initializers -----------------------------------------------------------------
 
+    private static final Logger logger = LoggerFactory.getLogger(BraceSymbol.class);
+
     /** Scaling to apply on default brace symbol size: {@value}. */
     private static final int MULTIPLIER = 4;
 
-    /** But keep the tiny version really tiny. */
-    private static final int myTinyInterline
-            = (int) Math.rint(2 * DEFAULT_INTERLINE * OmrFont.RATIO_TINY / MULTIPLIER);
-
-    private static final MusicFont myTinyMusicFont = getPointFont(
-            getPointSize(myTinyInterline), myTinyInterline);
-
     //~ Constructors -------------------------------------------------------------------------------
+
     /**
      * Create a BraceSymbol.
      *
-     * @param codes the codes for MusicFont characters
+     * @param family the MusicFont family
      */
-    public BraceSymbol (int... codes)
+    public BraceSymbol (MusicFamily family)
     {
-        super(Shape.BRACE, codes);
+        super(Shape.BRACE, family);
     }
 
     //~ Methods ------------------------------------------------------------------------------------
-    //--------------//
-    // computeImage //
-    //--------------//
-    @Override
-    protected void computeImage ()
-    {
-        image = buildImage(isTiny ? myTinyMusicFont : MusicFont.baseMusicFont);
-
-        dimension = new Dimension(image.getWidth(), image.getHeight());
-    }
 
     //-----------//
     // getParams //
@@ -80,9 +67,11 @@ public class BraceSymbol
     @Override
     protected Params getParams (MusicFont font)
     {
+        // This impacts brace symbol drawing in SheetView and in boards
         final Params p = new Params();
-        final AffineTransform at = AffineTransform.getScaleInstance(MULTIPLIER, MULTIPLIER);
-        p.layout = font.layout(getString(), at);
+        final double ratio = MULTIPLIER * (isTiny ? RATIO_TINY : 1);
+        final AffineTransform at = AffineTransform.getScaleInstance(ratio, ratio);
+        p.layout = font.layoutShapeByCode(Shape.BRACE, at);
         p.rect = p.layout.getBounds();
 
         return p;

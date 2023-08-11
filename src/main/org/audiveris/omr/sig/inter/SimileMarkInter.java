@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -21,68 +21,23 @@
 // </editor-fold>
 package org.audiveris.omr.sig.inter;
 
-import org.audiveris.omr.glyph.Glyph;
-import org.audiveris.omr.glyph.Shape;
-import org.audiveris.omr.glyph.ShapeSet;
-import org.audiveris.omr.sheet.Sheet;
-import org.audiveris.omr.sheet.Staff;
-import org.audiveris.omr.sheet.rhythm.MeasureStack;
-import org.audiveris.omr.sig.ui.HorizontalEditor;
-import org.audiveris.omr.sig.ui.InterEditor;
-import org.audiveris.omr.ui.symbol.MusicFont;
-import org.audiveris.omr.ui.symbol.ShapeSymbol;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.awt.Point;
+import org.audiveris.omr.sig.SIGraph;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
- * Class <code>SimileMarkInter</code> represents a simile mark to indicate that preceding
- * measure(s) are to be repeated.
+ * Class <code>SimileMarkInter</code> is kept only to convert old .omr files that used it.
  * <p>
- * The precise shape indicates simile marks for one, two or four measures.
- * <p>
- * <img alt="Music Simile" href="https://en.wikipedia.org/wiki/File:Music-simile.svg">
+ * It is replaced by {@link MeasureRepeatInter}.
  *
  * @author Hervé Bitteur
  */
+@Deprecated
 @XmlRootElement(name = "simile")
 public class SimileMarkInter
         extends AbstractInter
 {
-    //~ Static fields/initializers -----------------------------------------------------------------
-
-    private static final Logger logger = LoggerFactory.getLogger(SimileMarkInter.class);
-
     //~ Constructors -------------------------------------------------------------------------------
-    /**
-     * Creates a new <code>SimileMarkInter</code> object.
-     *
-     * @param glyph the mark glyph
-     * @param shape one of {@link ShapeSet#RepeatBars} shapes
-     * @param grade the interpretation quality
-     */
-    public SimileMarkInter (Glyph glyph,
-                            Shape shape,
-                            Double grade)
-    {
-        super(glyph, glyph.getBounds(), shape, grade);
-    }
-
-    /**
-     * Creates manually a new SimileMarkInter ghost object.
-     *
-     * @param shape precise mark shape
-     * @param grade quality grade
-     */
-    public SimileMarkInter (Shape shape,
-                            Double grade)
-    {
-        super(null, null, shape, grade);
-    }
 
     /**
      * No-arg constructor meant for JAXB.
@@ -92,87 +47,28 @@ public class SimileMarkInter
     }
 
     //~ Methods ------------------------------------------------------------------------------------
-    //-------//
-    // added //
-    //-------//
-    @Override
-    public void added ()
-    {
-        super.added();
 
-        MeasureStack stack = sig.getSystem().getStackAt(getCenter());
-
-        if (stack != null) {
-            stack.addInter(this);
-        }
-    }
-
-    //------------//
-    // deriveFrom //
-    //------------//
-    @Override
-    public boolean deriveFrom (ShapeSymbol symbol,
-                               Sheet sheet,
-                               MusicFont font,
-                               Point dropLocation)
-    {
-        return deriveOnStaffMiddleLine(this, staff, symbol, sheet, font, dropLocation);
-    }
-
-    //-----------//
-    // getEditor //
-    //-----------//
-    @Override
-    public InterEditor getEditor ()
-    {
-        return new HorizontalEditor(this);
-    }
-
-    //--------//
-    // create //
-    //--------//
+    //---------//
+    // replace //
+    //---------//
     /**
-     * Create a SimileMarkInter.
+     * Replace deprecated SimileMarkInter instance by MeasureRepeatInter instance.
      *
-     * @param glyph underlying glyph
-     * @param shape precise shape
-     * @param grade evaluation value
-     * @param staff related staff
-     * @return the created instance or null if failed
+     * @param simile the SimileMarkInter instance to replace and remove
+     * @return the replacement as MeasureRepeatInter instance
      */
-    public static SimileMarkInter create (Glyph glyph,
-                                          Shape shape,
-                                          double grade,
-                                          Staff staff)
+    public static MeasureRepeatInter replace (SimileMarkInter simile)
     {
-        SimileMarkInter simile = new SimileMarkInter(glyph, shape, grade);
-        simile.setStaff(staff);
+        final SIGraph sig = simile.getSig();
+        final MeasureRepeatInter repeat = new MeasureRepeatInter(
+                simile.getGlyph(),
+                simile.getShape(),
+                simile.getGrade());
+        repeat.setStaff(simile.getStaff());
+        sig.addVertex(repeat);
 
-        return simile;
-    }
+        simile.remove();
 
-    //--------//
-    // remove //
-    //--------//
-    /**
-     * Remove it from containing measure.
-     *
-     * @param extensive true for non-manual removals only
-     * @see #added()
-     */
-    @Override
-    public void remove (boolean extensive)
-    {
-        if (isRemoved()) {
-            return;
-        }
-
-        MeasureStack stack = sig.getSystem().getStackAt(getCenter());
-
-        if (stack != null) {
-            stack.removeInter(this);
-        }
-
-        super.remove(extensive);
+        return repeat;
     }
 }

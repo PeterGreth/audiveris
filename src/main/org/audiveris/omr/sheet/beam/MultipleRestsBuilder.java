@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -45,7 +45,6 @@ import org.audiveris.omr.sig.inter.VerticalSerifInter;
 import org.audiveris.omr.sig.relation.MultipleRestSerifRelation;
 import org.audiveris.omr.util.HorizontalSide;
 import org.audiveris.omr.util.Navigable;
-import org.audiveris.omr.util.StopWatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +77,7 @@ public class MultipleRestsBuilder
     private static final Logger logger = LoggerFactory.getLogger(MultipleRestsBuilder.class);
 
     //~ Instance fields ----------------------------------------------------------------------------
+
     /** The dedicated system. */
     @Navigable(false)
     private final SystemInfo system;
@@ -96,6 +96,7 @@ public class MultipleRestsBuilder
     private final Map<BeamInter, Map<HorizontalSide, StaffPeak>> found = new LinkedHashMap<>();
 
     //~ Constructors -------------------------------------------------------------------------------
+
     /**
      * Creates a new MultipleRestsBuilder object.
      *
@@ -110,63 +111,6 @@ public class MultipleRestsBuilder
     }
 
     //~ Methods ------------------------------------------------------------------------------------
-    //---------//
-    // process //
-    //---------//
-    /**
-     * Check every beam as a potential multiple rest.
-     * <ul>
-     * <li>Minimum beam width
-     * <li>Beam must be stuck on staff mid line
-     * <li>Presence of proper vertical serifs on either horizontal side
-     * </ul>
-     * NOTA: At this point in time, we cannot yet check the presence above the staff of
-     * the indicated number of measures concerned.
-     */
-    public void process ()
-    {
-        final SIGraph sig = system.getSig();
-        final List<Inter> beams = sig.inters(BeamInter.class);
-
-        for (Inter bi : beams) {
-            final BeamInter beam = (BeamInter) bi;
-
-            // Long enough?
-            if (beam.getBounds().width < params.minLength) {
-                continue;
-            }
-
-            final Point center = beam.getCenter();
-            final Staff staff = system.getStaffAtOrAbove(center);
-            if (staff == null) {
-                continue;
-            }
-
-            // Stuck horizontally on staff mid line?
-            double p1 = staff.pitchPositionOf(beam.getMedian().getP1());
-            if (Math.abs(p1) > constants.maxAbsolutePitch.getValue()) {
-                continue;
-            }
-
-            double p2 = staff.pitchPositionOf(beam.getMedian().getP2());
-            if (Math.abs(p2) > constants.maxAbsolutePitch.getValue()) {
-                continue;
-            }
-
-            final Map<HorizontalSide, StaffPeak> sidePeaks = getSerifPeaks(beam, staff);
-            if (sidePeaks.size() != 2) {
-                continue;
-            }
-
-            // All tests are OK
-            found.put(beam, sidePeaks);
-        }
-
-        if (!found.isEmpty()) {
-            createInters();
-            system.getSig().deleteInters(found.keySet());
-        }
-    }
 
     //--------------//
     // createInters //
@@ -185,7 +129,9 @@ public class MultipleRestsBuilder
 
             // Create multiple rest
             final MultipleRestInter multipleRest = new MultipleRestInter(
-                    beam.getGrade(), beam.getMedian(), beam.getHeight());
+                    beam.getGrade(),
+                    beam.getMedian(),
+                    beam.getHeight());
             sig.addVertex(multipleRest);
             multipleRest.setStaff(system.getStaffAtOrAbove(beam.getCenter()));
 
@@ -196,8 +142,11 @@ public class MultipleRestsBuilder
                 final Filament filament = filamentBuilder.buildFilament(peak, 0, allSections);
                 final Glyph glyph = glyphIndex.registerOriginal(filament.toGlyph(null));
                 final double x = peak.getStart() + (peak.getWidth() / 2d);
-                final Line2D median = new Line2D.Double(x, peak.getTop() - halfLine + 0.5,
-                                                        x, peak.getBottom() + halfLine + 0.5);
+                final Line2D median = new Line2D.Double(
+                        x,
+                        peak.getTop() - halfLine + 0.5,
+                        x,
+                        peak.getBottom() + halfLine + 0.5);
                 final VerticalSerifInter serif = new VerticalSerifInter(
                         glyph,
                         peak.getImpacts(),
@@ -271,8 +220,8 @@ public class MultipleRestsBuilder
 
         for (Lag lag : Arrays.asList(vLag, hLag)) {
             for (Section section : lag.getEntities()) {
-                if ((section.getLength(HORIZONTAL) <= maxWidth)
-                            && section.getBounds().intersects(systemBox)) {
+                if ((section.getLength(HORIZONTAL) <= maxWidth) && section.getBounds().intersects(
+                        systemBox)) {
                     sections.add(section);
                 }
             }
@@ -325,7 +274,66 @@ public class MultipleRestsBuilder
         return serifPeaks;
     }
 
+    //---------//
+    // process //
+    //---------//
+    /**
+     * Check every beam as a potential multiple rest.
+     * <ul>
+     * <li>Minimum beam width
+     * <li>Beam must be stuck on staff mid line
+     * <li>Presence of proper vertical serifs on either horizontal side
+     * </ul>
+     * NOTA: At this point in time, we cannot yet check the presence above the staff of
+     * the indicated number of measures concerned.
+     */
+    public void process ()
+    {
+        final SIGraph sig = system.getSig();
+        final List<Inter> beams = sig.inters(BeamInter.class);
+
+        for (Inter bi : beams) {
+            final BeamInter beam = (BeamInter) bi;
+
+            // Long enough?
+            if (beam.getBounds().width < params.minLength) {
+                continue;
+            }
+
+            final Point center = beam.getCenter();
+            final Staff staff = system.getStaffAtOrAbove(center);
+            if ((staff == null) || staff.isTablature()) {
+                continue;
+            }
+
+            // Stuck horizontally on staff mid line?
+            double p1 = staff.pitchPositionOf(beam.getMedian().getP1());
+            if (Math.abs(p1) > constants.maxAbsolutePitch.getValue()) {
+                continue;
+            }
+
+            double p2 = staff.pitchPositionOf(beam.getMedian().getP2());
+            if (Math.abs(p2) > constants.maxAbsolutePitch.getValue()) {
+                continue;
+            }
+
+            final Map<HorizontalSide, StaffPeak> sidePeaks = getSerifPeaks(beam, staff);
+            if (sidePeaks.size() != 2) {
+                continue;
+            }
+
+            // All tests are OK
+            found.put(beam, sidePeaks);
+        }
+
+        if (!found.isEmpty()) {
+            createInters();
+            system.getSig().deleteInters(found.keySet());
+        }
+    }
+
     //~ Inner Classes ------------------------------------------------------------------------------
+
     //-----------//
     // Constants //
     //-----------//

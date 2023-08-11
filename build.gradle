@@ -1,6 +1,6 @@
 apply plugin: 'application'
 
-project.version  = '5.3-alpha'
+project.version  = '5.3.1'
 sourceCompatibility = '1.17'
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
@@ -10,9 +10,9 @@ ext.programVersion  = "$project.version"
 ext.companyName     = "$programName Ltd."
 ext.companyId       = "${programName}Ltd"
 
-ext.jcppVersion     = '1.5.6'
-ext.leptVersion     = '1.81.1'
-ext.tessVersion     = '4.1.1'
+ext.jcppVersion     = '1.5.9'
+ext.leptVersion     = '1.83.0'
+ext.tessVersion     = '5.3.1'
 
 // this code is required in order to adapt values of os.name and os.arch to the
 // conventions used by Javacpp's dependencies
@@ -41,6 +41,9 @@ allprojects {
         options.compilerArgs << "-Xlint:unchecked"
     }
 }
+
+// To circumvent limitations brought by Jigsaw
+applicationDefaultJvmArgs = ["--add-exports=java.desktop/sun.awt.image=ALL-UNNAMED"]
 
 run {
     minHeapSize = '512m'
@@ -327,4 +330,17 @@ fileTree("$projectDir/private").include('*.gradle').each { file ->
 // Tell gradle to log standard output and error streams when running tests
 test {
     testLogging.showStandardStreams = true
+}
+
+// Utility task to print out head templates
+task(printTemplates, dependsOn: 'classes', type: JavaExec) {
+    description = "Print out head templates with various sizes"
+    mainClass = "org.audiveris.omr.image.TemplateFactory"
+    classpath = sourceSets.main.runtimeClasspath
+
+    if (project.hasProperty("cmdLineArgs")) {
+        if (cmdLineArgs) {
+            args(cmdLineArgs.split())
+        }
+    }
 }

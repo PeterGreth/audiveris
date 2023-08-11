@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -31,6 +31,9 @@ import org.audiveris.omr.sheet.Staff;
 import org.audiveris.omr.sig.inter.AbstractBeamInter;
 import static org.audiveris.omr.ui.symbol.Alignment.TOP_LEFT;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.awt.Composite;
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -52,33 +55,39 @@ public class BeamSymbol
 {
     //~ Static fields/initializers -----------------------------------------------------------------
 
-    // The decorating quarter (head + stem) part
-    private static final BasicSymbol quarter = Symbols.SYMBOL_QUARTER;
+    private static final Logger logger = LoggerFactory.getLogger(BeamSymbol.class);
 
     //~ Instance fields ----------------------------------------------------------------------------
+
     /** Specified beam thickness, if any, as a ratio of interline. */
     protected Double thicknessFraction;
 
     //~ Constructors -------------------------------------------------------------------------------
+
     /**
-     * Create a BeamSymbol.
+     * Create a BeamSymbol with BEAM shape.
+     *
+     * @param family the musicFont family
      */
-    public BeamSymbol ()
+    public BeamSymbol (MusicFamily family)
     {
-        this(Shape.BEAM);
+        this(Shape.BEAM, family);
     }
 
     /**
-     * Create a BeamSymbol.
+     * Create a BeamSymbol with provided shape.
      *
-     * @param shape the precise shape
+     * @param shape  the precise shape
+     * @param family the musicFont family
      */
-    protected BeamSymbol (Shape shape)
+    protected BeamSymbol (Shape shape,
+                          MusicFamily family)
     {
-        super(shape);
+        super(shape, family);
     }
 
     //~ Methods ------------------------------------------------------------------------------------
+
     //----------//
     // getModel //
     //----------//
@@ -90,6 +99,107 @@ public class BeamSymbol
         p.model.translate(p.vectorTo(location));
 
         return p.model;
+    }
+
+    //-----------//
+    // getParams //
+    //-----------//
+    @Override
+    protected MyParams getParams (MusicFont font)
+    {
+        MyParams p = new MyParams();
+        p.model = new AbstractBeamInter.Model();
+
+        final int il = font.getStaffInterline();
+        final double fraction = (thicknessFraction != null) ? thicknessFraction : 0.5;
+        p.model.thickness = Math.rint(il * fraction);
+
+        double width = il * 2.0; // Beam width
+        double yShift = 0; ///-il * 1.0; // Non zero for a slanted beam (p2.y - p1.y)
+        double absShift = Math.abs(yShift);
+
+        p.layout = font.layoutShapeByCode(Shape.QUARTER_NOTE_UP); // Quarter layout
+
+        if (isDecorated) {
+            p.quarterCount = 2;
+
+            Rectangle2D qRect = p.layout.getBounds();
+            p.rect = new Rectangle2D.Double(
+                    0,
+                    0,
+                    qRect.getWidth() + width,
+                    qRect.getHeight() + absShift);
+
+            if (yShift >= 0) {
+                p.model.p1 = new Point2D.Double(qRect.getWidth(), p.model.thickness / 2.0);
+                p.model.p2 = new Point2D.Double(
+                        qRect.getWidth() + width,
+                        (p.model.thickness / 2.0) + absShift);
+            } else {
+                p.model.p1 = new Point2D.Double(
+                        qRect.getWidth(),
+                        (p.model.thickness / 2.0) + absShift);
+                p.model.p2 = new Point2D.Double(qRect.getWidth() + width, p.model.thickness / 2.0);
+            }
+
+            // Define specific offset to point at center of beam
+            p.offset = new Point(
+                    (int) Math.rint((p.rect.getWidth() - width) / 2.0),
+                    (int) Math.rint(((absShift + p.model.thickness) - p.rect.getHeight()) / 2.0));
+        } else {
+            if (yShift >= 0) {
+                p.model.p1 = new Point2D.Double(0, p.model.thickness / 2.0);
+                p.model.p2 = new Point2D.Double(width, (p.model.thickness / 2.0) + absShift);
+            } else {
+                p.model.p1 = new Point2D.Double(0, (p.model.thickness / 2.0) + absShift);
+                p.model.p2 = new Point2D.Double(width, p.model.thickness / 2.0);
+            }
+
+            p.rect = new Rectangle(
+                    (int) Math.ceil(width),
+                    (int) Math.ceil(p.model.thickness + absShift));
+        }
+
+        return p;
+    }
+
+    //-------//
+    // paint //
+    //-------//
+    @Override
+    protected void paint (Graphics2D g,
+                          Params params,
+                          Point2D location,
+                          Alignment alignment)
+    {
+        MyParams p = (MyParams) params;
+        Point2D loc = alignment.translatedPoint(TOP_LEFT, p.rect, location);
+        p.model.translate(loc.getX(), loc.getY());
+
+        // Beam
+        Area area = AreaUtil.horizontalParallelogram(p.model.p1, p.model.p2, p.model.thickness);
+        g.fill(area);
+
+        if (isDecorated) {
+            // Draw the two quarters
+            Composite oldComposite = g.getComposite();
+            g.setComposite(decoComposite);
+
+            final int yShift = (int) Math.rint(p.model.p2.getY() - p.model.p1.getY());
+            final int absShift = Math.abs(yShift);
+
+            if (yShift < 0) {
+                PointUtil.add(loc, 0, absShift);
+            }
+
+            for (int iq = 0; iq < p.quarterCount; iq++) {
+                // begin by left side (p1)
+                MusicFont.paint(g, p.layout, loc, TOP_LEFT);
+                PointUtil.add(loc, p.model.p2.getX() - p.model.p1.getX(), yShift);
+            }
+
+            g.setComposite(oldComposite);
+        }
     }
 
     //-------------//
@@ -135,104 +245,8 @@ public class BeamSymbol
         }
     }
 
-    //-----------//
-    // getParams //
-    //-----------//
-    @Override
-    protected MyParams getParams (MusicFont font)
-    {
-        MyParams p = new MyParams();
-        p.model = new AbstractBeamInter.Model();
-
-        final int il = font.getStaffInterline();
-        final double fraction = (thicknessFraction != null) ? thicknessFraction : 0.5;
-        p.model.thickness = Math.rint(il * fraction);
-
-        double width = il * 2.0; // Beam width
-        double yShift = 0; ///-il * 1.0; // Non zero for a slanted beam (p2.y - p1.y)
-        double absShift = Math.abs(yShift);
-
-        p.layout = font.layout(quarter.getString()); // Quarter layout
-
-        if (isDecorated) {
-            p.quarterCount = 2;
-
-            Rectangle2D qRect = p.layout.getBounds();
-            p.rect = new Rectangle2D.Double(0,
-                                            0,
-                                            qRect.getWidth() + width,
-                                            qRect.getHeight() + absShift);
-
-            if (yShift >= 0) {
-                p.model.p1 = new Point2D.Double(qRect.getWidth(), p.model.thickness / 2.0);
-                p.model.p2 = new Point2D.Double(qRect.getWidth() + width,
-                                                (p.model.thickness / 2.0) + absShift);
-            } else {
-                p.model.p1 = new Point2D.Double(qRect.getWidth(),
-                                                (p.model.thickness / 2.0) + absShift);
-                p.model.p2 = new Point2D.Double(qRect.getWidth() + width, p.model.thickness / 2.0);
-            }
-
-            // Define specific offset to point at center of beam
-            p.offset = new Point(
-                    (int) Math.rint((p.rect.getWidth() - width) / 2.0),
-                    (int) Math.rint(((absShift + p.model.thickness) - p.rect.getHeight()) / 2.0));
-        } else {
-            if (yShift >= 0) {
-                p.model.p1 = new Point2D.Double(0, p.model.thickness / 2.0);
-                p.model.p2 = new Point2D.Double(width, (p.model.thickness / 2.0) + absShift);
-            } else {
-                p.model.p1 = new Point2D.Double(0, (p.model.thickness / 2.0) + absShift);
-                p.model.p2 = new Point2D.Double(width, p.model.thickness / 2.0);
-            }
-
-            p.rect = new Rectangle((int) Math.ceil(width),
-                                   (int) Math.ceil(p.model.thickness + absShift));
-        }
-
-        return p;
-    }
-
-    //-------//
-    // paint //
-    //-------//
-    @Override
-    protected void paint (Graphics2D g,
-                          Params params,
-                          Point2D location,
-                          Alignment alignment)
-    {
-        MyParams p = (MyParams) params;
-        Point2D loc = alignment.translatedPoint(TOP_LEFT, p.rect, location);
-        p.model.translate(loc.getX(), loc.getY());
-
-        // Beam
-        Area area = AreaUtil.horizontalParallelogram(p.model.p1, p.model.p2, p.model.thickness);
-        g.fill(area);
-
-        if (isDecorated) {
-            // Draw the two quarters
-            Composite oldComposite = g.getComposite();
-            g.setComposite(decoComposite);
-
-            final int yShift = (int) Math.rint(p.model.p2.getY() - p.model.p1.getY());
-            final int absShift = Math.abs(yShift);
-
-            if (yShift < 0) {
-                PointUtil.add(loc, 0, absShift);
-            }
-
-            for (int iq = 0; iq < p.quarterCount; iq++) {
-                // begin by left side (p1)
-                MusicFont.paint(g, p.layout, loc, TOP_LEFT);
-                PointUtil.add(loc, p.model.p2.getX() - p.model.p1.getX(), yShift);
-            }
-
-            g.setComposite(oldComposite);
-        }
-    }
-
     //~ Inner Classes ------------------------------------------------------------------------------
+
     //----------//
     // MyParams //
     //----------//

@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -21,9 +21,9 @@
 // </editor-fold>
 package org.audiveris.omr.ui.symbol;
 
-import org.audiveris.omr.glyph.Shape;
-import static org.audiveris.omr.math.GeoUtil.center;
 import static org.audiveris.omr.ui.symbol.Alignment.AREA_CENTER;
+
+import org.audiveris.omr.glyph.Shape;
 
 import java.awt.Graphics2D;
 import java.awt.font.TextLayout;
@@ -44,34 +44,39 @@ import java.awt.geom.Rectangle2D;
 public class RepeatBarSymbol
         extends ShapeSymbol
 {
-
-    //~ Instance fields ----------------------------------------------------------------------------
-    /** Code for REPEAT_TWO_BARS/REPEAT_FOUR_BARS chosen shape. */
-    private final int code;
-
     //~ Constructors -------------------------------------------------------------------------------
+
+    /**
+     * Create a <code>RepeatBarSymbol</code> object.
+     *
+     * @param shape  REPEAT_TWO_BARS, REPEAT_FOUR_BARS
+     * @param family the selected MusicFont family
+     */
     public RepeatBarSymbol (Shape shape,
-                            int code)
+                            MusicFamily family)
     {
-        super(shape);
-        this.code = code;
+        super(shape, family);
     }
 
     //~ Methods ------------------------------------------------------------------------------------
+
     //-----------//
     // getParams //
     //-----------//
     @Override
     protected MyParams getParams (MusicFont font)
     {
-        MyParams p = new MyParams(font, code);
+        MyParams p = new MyParams();
+        p.layout = font.layoutShapeByCode(shape);
+        p.barlineLayout = font.layoutShapeByCode(Shape.THIN_BARLINE);
 
         Rectangle2D repeatRect = p.layout.getBounds();
         Rectangle2D barlineRect = p.barlineLayout.getBounds();
-        p.rect = new Rectangle2D.Double(0,
-                                        0,
-                                        Math.max(repeatRect.getWidth(), barlineRect.getWidth()),
-                                        Math.max(repeatRect.getHeight(), barlineRect.getHeight()));
+        p.rect = new Rectangle2D.Double(
+                0,
+                0,
+                Math.max(repeatRect.getWidth(), barlineRect.getWidth()),
+                Math.max(repeatRect.getHeight(), barlineRect.getHeight()));
 
         return p;
     }
@@ -93,6 +98,7 @@ public class RepeatBarSymbol
     }
 
     //~ Inner Classes ------------------------------------------------------------------------------
+
     //----------//
     // MyParams //
     //----------//
@@ -104,13 +110,6 @@ public class RepeatBarSymbol
         // layout for repeat symbol
         // rect for (repeat + barline) bounds
         //
-        final TextLayout barlineLayout; // For barline
-
-        MyParams (MusicFont font,
-                  int code)
-        {
-            layout = font.layout(code);
-            barlineLayout = font.layout(Symbols.CODE_THIN_BARLINE);
-        }
+        TextLayout barlineLayout; // For barline
     }
 }

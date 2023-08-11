@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -21,9 +21,10 @@
 // </editor-fold>
 package org.audiveris.omr.ui.symbol;
 
+import static org.audiveris.omr.ui.symbol.Alignment.TOP_LEFT;
+
 import org.audiveris.omr.glyph.Shape;
 import org.audiveris.omr.sig.inter.SlurInter;
-import static org.audiveris.omr.ui.symbol.Alignment.*;
 
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -44,18 +45,22 @@ public class SlurSymbol
     final boolean above;
 
     //~ Constructors -------------------------------------------------------------------------------
+
     /**
      * Create a SlurSymbol.
      *
-     * @param above true for above, false for below
+     * @param above  true for above, false for below
+     * @param family the musicFont family
      */
-    public SlurSymbol (boolean above)
+    public SlurSymbol (boolean above,
+                       MusicFamily family)
     {
-        super(above ? Shape.SLUR_ABOVE : Shape.SLUR_BELOW);
+        super(above ? Shape.SLUR_ABOVE : Shape.SLUR_BELOW, family);
         this.above = above;
     }
 
     //~ Methods ------------------------------------------------------------------------------------
+
     //----------//
     // getModel //
     //----------//
@@ -81,9 +86,10 @@ public class SlurSymbol
         final double h = il;
         p.rect = new Rectangle2D.Double(0, 0, w, h);
 
-        p.model = new SlurInter.Model(above //  /--\ vs \--/
-                ? new CubicCurve2D.Double(0, h, w / 5, 0, 4 * w / 5, 0, w, h)
-                : new CubicCurve2D.Double(0, 0, w / 5, h, 4 * w / 5, h, w, 0));
+        p.model = new SlurInter.Model(
+                above //  /--\ vs \--/
+                        ? new CubicCurve2D.Double(0, h, w / 5, 0, 4 * w / 5, 0, w, h)
+                        : new CubicCurve2D.Double(0, 0, w / 5, h, 4 * w / 5, h, w, 0));
 
         // For a slur symbol, focus center is the middle of side points
         p.offset = new Point2D.Double(0, above ? (h / 2) : (-h / 2));
@@ -110,11 +116,12 @@ public class SlurSymbol
     }
 
     //~ Inner Classes ------------------------------------------------------------------------------
+
     //--------//
     // Params //
     //--------//
     protected static class MyParams
-            extends BasicSymbol.Params
+            extends ShapeSymbol.Params
     {
 
         // offset: used

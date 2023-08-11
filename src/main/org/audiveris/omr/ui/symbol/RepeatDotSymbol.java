@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -21,11 +21,11 @@
 // </editor-fold>
 package org.audiveris.omr.ui.symbol;
 
-import org.audiveris.omr.glyph.Shape;
-import org.audiveris.omr.math.PointUtil;
 import static org.audiveris.omr.ui.symbol.Alignment.AREA_CENTER;
 import static org.audiveris.omr.ui.symbol.Alignment.TOP_CENTER;
-import static org.audiveris.omr.ui.symbol.ShapeSymbol.decoComposite;
+
+import org.audiveris.omr.glyph.Shape;
+import org.audiveris.omr.math.PointUtil;
 
 import java.awt.Composite;
 import java.awt.Graphics2D;
@@ -46,17 +46,19 @@ public class RepeatDotSymbol
     private static final double yRatio = 3.5;
 
     //~ Constructors -------------------------------------------------------------------------------
+
     /**
      * Create a <code>RepeatDotSymbol</code> standard size with no decoration.
      *
-     * @param codes the codes for MusicFont characters
+     * @param family the musicFont family
      */
-    public RepeatDotSymbol (int... codes)
+    public RepeatDotSymbol (MusicFamily family)
     {
-        super(Shape.REPEAT_DOT, codes);
+        super(Shape.REPEAT_DOT, family);
     }
 
     //~ Methods ------------------------------------------------------------------------------------
+
     //-----------//
     // getParams //
     //-----------//
@@ -69,7 +71,7 @@ public class RepeatDotSymbol
         Params p = new Params();
 
         // Dot layout
-        p.layout = font.layout(getString());
+        p.layout = font.layoutShapeByCode(shape);
 
         Rectangle2D rs = p.layout.getBounds(); // Symbol bounds
 

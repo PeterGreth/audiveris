@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -22,7 +22,6 @@
 package org.audiveris.omr.ui.symbol;
 
 import org.audiveris.omr.glyph.Shape;
-import static org.audiveris.omr.glyph.Shape.DOT_set;
 import static org.audiveris.omr.ui.symbol.Alignment.BOTTOM_CENTER;
 import static org.audiveris.omr.ui.symbol.Alignment.TOP_CENTER;
 
@@ -45,25 +44,22 @@ import java.awt.geom.Point2D;
 public class FermataArcSymbol
         extends DecorableSymbol
 {
-    //~ Instance fields ----------------------------------------------------------------------------
-
-    // The DOT_set symbol
-    private final ShapeSymbol dotSymbol = Symbols.getSymbol(DOT_set);
-
     //~ Constructors -------------------------------------------------------------------------------
+
     /**
      * Create a FermataArcSymbol standard size with no decoration.
      *
-     * @param shape the precise shape
-     * @param codes the codes for MusicFont characters
+     * @param shape  the precise shape
+     * @param family the musicFont family
      */
     public FermataArcSymbol (Shape shape,
-                             int... codes)
+                             MusicFamily family)
     {
-        super(shape, codes);
+        super(shape, family);
     }
 
     //~ Methods ------------------------------------------------------------------------------------
+
     //-----------//
     // getParams //
     //-----------//
@@ -73,11 +69,11 @@ public class FermataArcSymbol
         MyParams p = new MyParams();
 
         // Full symbol (arc + dot)
-        p.layout = font.layout(codes);
+        p.layout = font.layoutShapeByCode(shape);
         p.rect = p.layout.getBounds();
 
         // Dot layout
-        p.dotLayout = font.layout(dotSymbol);
+        p.dotLayout = font.layoutShapeByCode(Shape.DOT_set);
 
         return p;
     }
@@ -115,6 +111,7 @@ public class FermataArcSymbol
     }
 
     //~ Inner Classes ------------------------------------------------------------------------------
+
     //--------//
     // Params //
     //--------//

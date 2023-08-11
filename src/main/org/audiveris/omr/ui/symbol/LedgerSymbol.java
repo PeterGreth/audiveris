@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -40,23 +40,20 @@ import java.awt.geom.Rectangle2D;
 public class LedgerSymbol
         extends DecorableSymbol
 {
-    //~ Static fields/initializers -----------------------------------------------------------------
-
-    // The head part
-    private static final BasicSymbol head = Symbols.getSymbol(Shape.NOTEHEAD_BLACK);
-
     //~ Constructors -------------------------------------------------------------------------------
+
     /**
      * Create a LedgerSymbol (with decoration?) standard size
      *
-     * @param codes the codes for MusicFont characters
+     * @param family the musicFont family
      */
-    public LedgerSymbol (int... codes)
+    public LedgerSymbol (MusicFamily family)
     {
-        super(Shape.LEDGER, codes);
+        super(Shape.LEDGER, family);
     }
 
     //~ Methods ------------------------------------------------------------------------------------
+
     //----------//
     // getModel //
     //----------//
@@ -67,10 +64,11 @@ public class LedgerSymbol
         final MyParams p = getParams(font);
         final double width = p.rect.getWidth();
 
-        return new LedgerInter.Model(location.x - width / 2,
-                                     location.y,
-                                     location.x + width / 2,
-                                     location.y);
+        return new LedgerInter.Model(
+                location.x - width / 2,
+                location.y,
+                location.x + width / 2,
+                location.y);
     }
 
     //-----------//
@@ -80,12 +78,12 @@ public class LedgerSymbol
     protected MyParams getParams (MusicFont font)
     {
         final MyParams p = new MyParams();
-        p.layout = font.layout(getString());
+        p.layout = font.layoutShapeByCode(shape);
         p.rect = p.layout.getBounds();
 
         if (isDecorated) {
             // Add head layout
-            p.headLayout = font.layout(head.getString());
+            p.headLayout = font.layoutShapeByCode(Shape.NOTEHEAD_BLACK);
             final Rectangle2D hr = p.headLayout.getBounds();
             Rectangle2D.union(p.rect, hr, p.rect);
         }
@@ -118,11 +116,12 @@ public class LedgerSymbol
     }
 
     //~ Inner Classes ------------------------------------------------------------------------------
+
     //--------//
     // Params //
     //--------//
     protected static class MyParams
-            extends BasicSymbol.Params
+            extends ShapeSymbol.Params
     {
 
         // offset: not used

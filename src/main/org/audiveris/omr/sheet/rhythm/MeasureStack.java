@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -36,12 +36,13 @@ import org.audiveris.omr.sig.inter.AbstractChordInter;
 import org.audiveris.omr.sig.inter.AbstractTimeInter;
 import org.audiveris.omr.sig.inter.HeadChordInter;
 import org.audiveris.omr.sig.inter.Inter;
-import org.audiveris.omr.sig.inter.MeasureNumberInter;
+import org.audiveris.omr.sig.inter.MeasureCountInter;
 import org.audiveris.omr.sig.inter.MultipleRestInter;
 import org.audiveris.omr.sig.inter.StaffBarlineInter;
 import org.audiveris.omr.sig.inter.TupletInter;
 import org.audiveris.omr.util.HorizontalSide;
-import static org.audiveris.omr.util.HorizontalSide.*;
+import static org.audiveris.omr.util.HorizontalSide.LEFT;
+import static org.audiveris.omr.util.HorizontalSide.RIGHT;
 import org.audiveris.omr.util.Jaxb;
 import org.audiveris.omr.util.Navigable;
 import org.audiveris.omr.util.Trimmable;
@@ -116,24 +117,11 @@ public class MeasureStack
     /** String suffix for a cautionary id: {@value}. */
     public static final String CAUTIONARY_SUFFIX = "C";
 
-    //~ Enumerations -------------------------------------------------------------------------------
-    /**
-     * Enum <code>SpecialMeasure</code> describes all special kinds of measures.
-     */
-    public enum SpecialMeasure
-    {
-        PICKUP,
-        FIRST_HALF,
-        SECOND_HALF,
-        CAUTIONARY,
-        MULTI_REST;
-    }
-
     //~ Instance fields ----------------------------------------------------------------------------
-    //
+
     // Persistent data
     //----------------
-    //
+
     /** Measure Id (within the containing page). */
     @XmlAttribute
     private Integer id;
@@ -213,7 +201,7 @@ public class MeasureStack
 
     // Transient data
     //---------------
-    //
+
     /** The containing system. */
     @Navigable(false)
     private SystemInfo system;
@@ -222,6 +210,15 @@ public class MeasureStack
     private final List<Measure> measures = new ArrayList<>();
 
     //~ Constructors -------------------------------------------------------------------------------
+
+    /**
+     * No-arg constructor meant for JAXB.
+     */
+    private MeasureStack ()
+    {
+        this.system = null;
+    }
+
     /**
      * Creates a new <code>MeasureStack</code> object.
      *
@@ -232,15 +229,8 @@ public class MeasureStack
         this.system = system;
     }
 
-    /**
-     * No-arg constructor meant for JAXB.
-     */
-    private MeasureStack ()
-    {
-        this.system = null;
-    }
-
     //~ Methods ------------------------------------------------------------------------------------
+
     //----------//
     // addInter //
     //----------//
@@ -271,6 +261,21 @@ public class MeasureStack
     // addMeasure //
     //------------//
     /**
+     * Append a measure in stack at provided index
+     *
+     * @param index   index where measure is to be inserted
+     * @param measure the measure to append
+     */
+    public void addMeasure (int index,
+                            Measure measure)
+    {
+        measures.add(index, measure);
+    }
+
+    //------------//
+    // addMeasure //
+    //------------//
+    /**
      * Append a measure in stack.
      *
      * @param measure the measure to append
@@ -288,21 +293,6 @@ public class MeasureStack
             left = Math.min(left, measure.getAbscissa(LEFT, staff));
             right = Math.max(right, measure.getAbscissa(RIGHT, staff));
         }
-    }
-
-    //------------//
-    // addMeasure //
-    //------------//
-    /**
-     * Append a measure in stack at provided index
-     *
-     * @param index   index where measure is to be inserted
-     * @param measure the measure to append
-     */
-    public void addMeasure (int index,
-                            Measure measure)
-    {
-        measures.add(index, measure);
     }
 
     //-----------//
@@ -344,6 +334,19 @@ public class MeasureStack
         measure.addInter(ts);
     }
 
+    //--------------//
+    // afterMarshal //
+    //--------------//
+    @SuppressWarnings("unused")
+    private void afterMarshal (Marshaller m)
+    {
+        try {
+            Trimmable.afterMarshal(this);
+        } catch (Exception ex) {
+            logger.error("Error afterMarshal", ex);
+        }
+    }
+
     //-------------//
     // afterReload //
     //-------------//
@@ -376,6 +379,19 @@ public class MeasureStack
     }
 
     //---------------//
+    // beforeMarshal //
+    //---------------//
+    @SuppressWarnings("unused")
+    private void beforeMarshal (Marshaller m)
+    {
+        try {
+            Trimmable.beforeMarshal(this);
+        } catch (Exception ex) {
+            logger.error("Error beforeMarshal", ex);
+        }
+    }
+
+    //---------------//
     // checkDuration //
     //---------------//
     /**
@@ -386,6 +402,37 @@ public class MeasureStack
     {
         for (Measure measure : measures) {
             measure.checkDuration();
+        }
+    }
+
+    //--------------//
+    // checkRepeats //
+    //--------------//
+    /**
+     * Check every staff of this measure for a repeat sign at the provided partBarline.
+     *
+     * @param partBarline the provided PartBarline
+     * @param side        repeat side: LEFT or RIGHT
+     */
+    private void checkRepeats (final PartBarline partBarline,
+                               final HorizontalSide side)
+    {
+        if (partBarline == null) {
+            return;
+        }
+
+        final List<StaffBarlineInter> bars = partBarline.getStaffBarlines();
+
+        for (StaffBarlineInter sbl : bars) {
+            if (side == LEFT) {
+                if (sbl.isLeftRepeat()) {
+                    addRepeat(LEFT);
+                }
+            } else {
+                if (sbl.isRightRepeat()) {
+                    addRepeat(RIGHT);
+                }
+            }
         }
     }
 
@@ -469,37 +516,6 @@ public class MeasureStack
             checkRepeats(measure.getPartBarlineOn(LEFT), LEFT);
             checkRepeats(measure.getMidPartBarline(), LEFT);
             checkRepeats(measure.getPartBarlineOn(RIGHT), RIGHT);
-        }
-    }
-
-    //--------------//
-    // checkRepeats //
-    //--------------//
-    /**
-     * Check every staff of this measure for a repeat sign at the provided partBarline.
-     *
-     * @param partBarline the provided PartBarline
-     * @param side        repeat side: LEFT or RIGHT
-     */
-    private void checkRepeats (final PartBarline partBarline,
-                               final HorizontalSide side)
-    {
-        if (partBarline == null) {
-            return;
-        }
-
-        final List<StaffBarlineInter> bars = partBarline.getStaffBarlines();
-
-        for (StaffBarlineInter sbl : bars) {
-            if (side == LEFT) {
-                if (sbl.isLeftRepeat()) {
-                    addRepeat(LEFT);
-                }
-            } else {
-                if (sbl.isRightRepeat()) {
-                    addRepeat(RIGHT);
-                }
-            }
         }
     }
 
@@ -605,9 +621,8 @@ public class MeasureStack
             }
 
             // Precise abscissa limits
-            if ((measure != null)
-                        && (measure.getAbscissa(LEFT, staff) <= center.x)
-                        && (center.x <= measure.getAbscissa(RIGHT, staff))) {
+            if ((measure != null) && (measure.getAbscissa(LEFT, staff) <= center.x)
+                    && (center.x <= measure.getAbscissa(RIGHT, staff))) {
                 kept.add(inter);
             }
         }
@@ -627,19 +642,6 @@ public class MeasureStack
     public Rational getActualDuration ()
     {
         return actualDuration;
-    }
-
-    //-------------------//
-    // setActualDuration //
-    //-------------------//
-    /**
-     * Register in this measure stack its actual duration.
-     *
-     * @param actualDuration the duration value
-     */
-    public void setActualDuration (Rational actualDuration)
-    {
-        this.actualDuration = actualDuration;
     }
 
     //-----------------//
@@ -781,19 +783,6 @@ public class MeasureStack
         return excess;
     }
 
-    //-----------//
-    // setExcess //
-    //-----------//
-    /**
-     * Assign an excess duration for this stack.
-     *
-     * @param excess the duration in excess
-     */
-    public void setExcess (Rational excess)
-    {
-        this.excess = excess;
-    }
-
     //---------------------//
     // getExpectedDuration //
     //---------------------//
@@ -805,19 +794,6 @@ public class MeasureStack
     public Rational getExpectedDuration ()
     {
         return expectedDuration;
-    }
-
-    //---------------------//
-    // setExpectedDuration //
-    //---------------------//
-    /**
-     * Set measure expected duration.
-     *
-     * @param expectedDuration the expected duration
-     */
-    public void setExpectedDuration (Rational expectedDuration)
-    {
-        this.expectedDuration = expectedDuration;
     }
 
     //-----------------//
@@ -898,19 +874,6 @@ public class MeasureStack
         return id;
     }
 
-    //------------//
-    // setIdValue //
-    //------------//
-    /**
-     * Assign the proper page-based id value to this measure stack.
-     *
-     * @param id the proper page-based measure stack id value
-     */
-    public void setIdValue (int id)
-    {
-        this.id = id;
-    }
-
     //-------------//
     // getLastSlot //
     //-------------//
@@ -943,15 +906,15 @@ public class MeasureStack
     // getMeasureAt //
     //--------------//
     /**
-     * Report the measure at provided staff
+     * Report the measure at provided part
      *
-     * @param staff the provided staff
-     * @return the measure that contains the provided staff
+     * @param part the provided part
+     * @return the measure that contains the provided part
      */
-    public Measure getMeasureAt (Staff staff)
+    public Measure getMeasureAt (Part part)
     {
         for (Measure measure : measures) {
-            if (measure.getPart().getStaves().contains(staff)) {
+            if (measure.getPart() == part) {
                 return measure;
             }
         }
@@ -963,15 +926,15 @@ public class MeasureStack
     // getMeasureAt //
     //--------------//
     /**
-     * Report the measure at provided part
+     * Report the measure at provided staff
      *
-     * @param part the provided part
-     * @return the measure that contains the provided part
+     * @param staff the provided staff
+     * @return the measure that contains the provided staff
      */
-    public Measure getMeasureAt (Part part)
+    public Measure getMeasureAt (Staff staff)
     {
         for (Measure measure : measures) {
-            if (measure.getPart() == part) {
+            if (measure.getPart().getStaves().contains(staff)) {
                 return measure;
             }
         }
@@ -992,29 +955,29 @@ public class MeasureStack
         return measures;
     }
 
-    //--------------------------//
-    // getMultipleMeasureNumber //
-    //--------------------------//
+    //-------------------------//
+    // getMultipleMeasureCount //
+    //-------------------------//
     /**
      * Report the count of measures indicated by a multiple rest if any.
      *
      * @return the count of measures if found or null
      */
-    public Integer getMultipleMeasureNumber ()
+    public Integer getMultipleMeasureCount ()
     {
-        return getMultipleMeasureNumber(system.getSig().inters(MultipleRestInter.class));
+        return getMultipleMeasureCount(system.getSig().inters(MultipleRestInter.class));
     }
 
-    //--------------------------//
-    // getMultipleMeasureNumber //
-    //--------------------------//
+    //-------------------------//
+    // getMultipleMeasureCount //
+    //-------------------------//
     /**
      * Report the count of measures indicated by a multiple rest if any.
      *
      * @param multipleRests all multiple rests in this system
      * @return the count of measures if found or null
      */
-    public Integer getMultipleMeasureNumber (Collection<Inter> multipleRests)
+    public Integer getMultipleMeasureCount (Collection<Inter> multipleRests)
     {
         if (multipleRests.isEmpty()) {
             return null;
@@ -1025,13 +988,13 @@ public class MeasureStack
 
             if ((center.x >= left) && (center.x <= right)) {
                 final MultipleRestInter multipleRest = (MultipleRestInter) mri;
-                final MeasureNumberInter measureNumber = multipleRest.getMeasureNumber();
+                final MeasureCountInter measureCount = multipleRest.getMeasureCount();
 
-                if (measureNumber == null) {
+                if (measureCount == null) {
                     return null;
                 }
 
-                return measureNumber.getValue();
+                return measureCount.getValue();
             }
         }
 
@@ -1070,7 +1033,7 @@ public class MeasureStack
     {
         if (id != null) {
             return ((special == SpecialMeasure.SECOND_HALF) ? SECOND_HALF_PREFIX : "") + id
-                           + (isCautionary() ? CAUTIONARY_SUFFIX : "");
+                    + (isCautionary() ? CAUTIONARY_SUFFIX : "");
         }
 
         // No id defined yet
@@ -1145,20 +1108,6 @@ public class MeasureStack
     /**
      * Report the character string of the score-based measure id.
      *
-     * @param score the containing score
-     * @return the (absolute) score-based measure id string
-     */
-    public String getScoreId (Score score)
-    {
-        return getScoreId(score.getMeasureIdOffset(system.getPage()));
-    }
-
-    //------------//
-    // getScoreId //
-    //------------//
-    /**
-     * Report the character string of the score-based measure id.
-     *
      * @param pageMeasureIdOffset the measure ID offset for containing page
      * @return the (absolute) score-based measure id string
      */
@@ -1169,7 +1118,21 @@ public class MeasureStack
         }
 
         return ((special == SpecialMeasure.SECOND_HALF) ? SECOND_HALF_PREFIX : "")
-                       + (pageMeasureIdOffset + id);
+                + (pageMeasureIdOffset + id);
+    }
+
+    //------------//
+    // getScoreId //
+    //------------//
+    /**
+     * Report the character string of the score-based measure id.
+     *
+     * @param score the containing score
+     * @return the (absolute) score-based measure id string
+     */
+    public String getScoreId (Score score)
+    {
+        return getScoreId(score.getMeasureIdOffset(system.getPage()));
     }
 
     //----------//
@@ -1467,27 +1430,6 @@ public class MeasureStack
     /**
      * Report the precise abscissa offset since stack left border of the provided point.
      *
-     * @param point the provided point
-     * @param staff the staff of reference
-     * @return xOffset of the point WRT stack left side
-     */
-    public double getXOffset (Point2D point,
-                              Staff staff)
-    {
-        // Extrapolate, using skew, from single staff
-        final Skew skew = system.getSkew();
-        final Measure measure = getMeasureAt(staff);
-        final Point2D left = measure.getSidePoint(HorizontalSide.LEFT, staff);
-
-        return skew.deskewed(point).getX() - skew.deskewed(left).getX();
-    }
-
-    //------------//
-    // getXOffset //
-    //------------//
-    /**
-     * Report the precise abscissa offset since stack left border of the provided point.
-     *
      * @param point        the provided point
      * @param stavesAround one or two staves that surround the provided point
      * @return xOffset of the point WRT stack left side
@@ -1519,6 +1461,27 @@ public class MeasureStack
     }
 
     //------------//
+    // getXOffset //
+    //------------//
+    /**
+     * Report the precise abscissa offset since stack left border of the provided point.
+     *
+     * @param point the provided point
+     * @param staff the staff of reference
+     * @return xOffset of the point WRT stack left side
+     */
+    public double getXOffset (Point2D point,
+                              Staff staff)
+    {
+        // Extrapolate, using skew, from single staff
+        final Skew skew = system.getSkew();
+        final Measure measure = getMeasureAt(staff);
+        final Point2D left = measure.getSidePoint(HorizontalSide.LEFT, staff);
+
+        return skew.deskewed(point).getX() - skew.deskewed(left).getX();
+    }
+
+    //------------//
     // isAbnormal //
     //------------//
     /**
@@ -1529,19 +1492,6 @@ public class MeasureStack
     public boolean isAbnormal ()
     {
         return abnormal;
-    }
-
-    //-------------//
-    // setAbnormal //
-    //-------------//
-    /**
-     * Mark this stack as being abnormal or not.
-     *
-     * @param abnormal new value
-     */
-    public void setAbnormal (boolean abnormal)
-    {
-        this.abnormal = abnormal;
     }
 
     //--------------//
@@ -1745,6 +1695,46 @@ public class MeasureStack
         }
     }
 
+    //-------------//
+    // removeInter //
+    //-------------//
+    /**
+     * Remove an inter from the stack.
+     *
+     * @param inter the inter to remove
+     */
+    public void removeInter (Inter inter)
+    {
+        if (inter.isVip()) {
+            logger.info("VIP removeInter {} from {}", inter, this);
+        }
+
+        final Part part = inter.getPart();
+
+        if (part != null) {
+            int partIndex = system.getParts().indexOf(part);
+            Measure measure = measures.get(partIndex);
+            measure.removeInter(inter);
+        }
+
+        if (inter instanceof TupletInter tupletInter) {
+            stackTuplets.remove(tupletInter);
+        }
+    }
+
+    //---------------//
+    // removeMeasure //
+    //---------------//
+    /**
+     * Remove a measure from the stack
+     *
+     * @param measure the measure to remove
+     */
+    public void removeMeasure (Measure measure)
+    {
+        measures.remove(measure);
+    }
+
     //--------------------//
     // removePartBarlines //
     //--------------------//
@@ -1776,46 +1766,6 @@ public class MeasureStack
                 previousPart = part;
             }
         }
-    }
-
-    //-------------//
-    // removeInter //
-    //-------------//
-    /**
-     * Remove an inter from the stack.
-     *
-     * @param inter the inter to remove
-     */
-    public void removeInter (Inter inter)
-    {
-        if (inter.isVip()) {
-            logger.info("VIP removeInter {} from {}", inter, this);
-        }
-
-        final Part part = inter.getPart();
-
-        if (part != null) {
-            int partIndex = system.getParts().indexOf(part);
-            Measure measure = measures.get(partIndex);
-            measure.removeInter(inter);
-        }
-
-        if (inter instanceof TupletInter) {
-            stackTuplets.remove(inter);
-        }
-    }
-
-    //---------------//
-    // removeMeasure //
-    //---------------//
-    /**
-     * Remove a measure from the stack
-     *
-     * @param measure the measure to remove
-     */
-    public void removeMeasure (Measure measure)
-    {
-        measures.remove(measure);
     }
 
     //------------//
@@ -1881,17 +1831,6 @@ public class MeasureStack
         g.fill(new Rectangle(left, top, right - left + 1, bottom - top + 1));
     }
 
-    //--------------//
-    // resetSpecial //
-    //--------------//
-    /**
-     * Reset special indication flag.
-     */
-    public void resetSpecial ()
-    {
-        special = null;
-    }
-
     //-------------//
     // resetRhythm //
     //-------------//
@@ -1910,6 +1849,43 @@ public class MeasureStack
         setActualDuration(null);
     }
 
+    //--------------//
+    // resetSpecial //
+    //--------------//
+    /**
+     * Reset special indication flag.
+     */
+    public void resetSpecial ()
+    {
+        special = null;
+    }
+
+    //-------------//
+    // setAbnormal //
+    //-------------//
+    /**
+     * Mark this stack as being abnormal or not.
+     *
+     * @param abnormal new value
+     */
+    public void setAbnormal (boolean abnormal)
+    {
+        this.abnormal = abnormal;
+    }
+
+    //-------------------//
+    // setActualDuration //
+    //-------------------//
+    /**
+     * Register in this measure stack its actual duration.
+     *
+     * @param actualDuration the duration value
+     */
+    public void setActualDuration (Rational actualDuration)
+    {
+        this.actualDuration = actualDuration;
+    }
+
     //---------------//
     // setCautionary //
     //---------------//
@@ -1921,6 +1897,32 @@ public class MeasureStack
         special = SpecialMeasure.CAUTIONARY;
     }
 
+    //-----------//
+    // setExcess //
+    //-----------//
+    /**
+     * Assign an excess duration for this stack.
+     *
+     * @param excess the duration in excess
+     */
+    public void setExcess (Rational excess)
+    {
+        this.excess = excess;
+    }
+
+    //---------------------//
+    // setExpectedDuration //
+    //---------------------//
+    /**
+     * Set measure expected duration.
+     *
+     * @param expectedDuration the expected duration
+     */
+    public void setExpectedDuration (Rational expectedDuration)
+    {
+        this.expectedDuration = expectedDuration;
+    }
+
     //--------------//
     // setFirstHalf //
     //--------------//
@@ -1930,6 +1932,19 @@ public class MeasureStack
     public void setFirstHalf ()
     {
         special = SpecialMeasure.FIRST_HALF;
+    }
+
+    //------------//
+    // setIdValue //
+    //------------//
+    /**
+     * Assign the proper page-based id value to this measure stack.
+     *
+     * @param id the proper page-based measure stack id value
+     */
+    public void setIdValue (int id)
+    {
+        this.id = id;
     }
 
     //--------------//
@@ -2168,29 +2183,17 @@ public class MeasureStack
         // (no, done by reprocessPageRhythm)
     }
 
-    //--------------//
-    // afterMarshal //
-    //--------------//
-    @SuppressWarnings("unused")
-    private void afterMarshal (Marshaller m)
-    {
-        try {
-            Trimmable.afterMarshal(this);
-        } catch (Exception ex) {
-            logger.error("Error afterMarshal", ex);
-        }
-    }
+    //~ Enumerations -------------------------------------------------------------------------------
 
-    //---------------//
-    // beforeMarshal //
-    //---------------//
-    @SuppressWarnings("unused")
-    private void beforeMarshal (Marshaller m)
+    /**
+     * Enum <code>SpecialMeasure</code> describes all special kinds of measures.
+     */
+    public enum SpecialMeasure
     {
-        try {
-            Trimmable.beforeMarshal(this);
-        } catch (Exception ex) {
-            logger.error("Error beforeMarshal", ex);
-        }
+        PICKUP,
+        FIRST_HALF,
+        SECOND_HALF,
+        CAUTIONARY,
+        MULTI_REST;
     }
 }

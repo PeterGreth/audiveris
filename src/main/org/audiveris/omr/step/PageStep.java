@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -23,9 +23,11 @@ package org.audiveris.omr.step;
 
 import org.audiveris.omr.score.MeasureFixer;
 import org.audiveris.omr.score.Page;
-import org.audiveris.omr.score.PageReduction;
+import org.audiveris.omr.score.Score;
+import org.audiveris.omr.score.ScoreReduction;
 import org.audiveris.omr.sheet.Sheet;
 import org.audiveris.omr.sheet.SheetReduction;
+import org.audiveris.omr.sheet.SheetStub;
 import org.audiveris.omr.sheet.SystemInfo;
 import org.audiveris.omr.sheet.rhythm.MeasureStack;
 import org.audiveris.omr.sheet.rhythm.Voices;
@@ -45,7 +47,7 @@ import org.audiveris.omr.sig.inter.LyricLineInter;
 import org.audiveris.omr.sig.inter.RestChordInter;
 import org.audiveris.omr.sig.inter.RestInter;
 import org.audiveris.omr.sig.inter.SentenceInter;
-import org.audiveris.omr.sig.inter.SimileMarkInter;
+import org.audiveris.omr.sig.inter.MeasureRepeatInter;
 import org.audiveris.omr.sig.inter.SlurInter;
 import org.audiveris.omr.sig.inter.StaffBarlineInter;
 import org.audiveris.omr.sig.inter.StemInter;
@@ -77,6 +79,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -176,7 +179,7 @@ public class PageStep
         forMeasures = new HashSet<>();
         // Inters
         forMeasures.add(BarlineInter.class);
-        forMeasures.add(SimileMarkInter.class);
+        forMeasures.add(MeasureRepeatInter.class);
         forMeasures.add(StaffBarlineInter.class);
         // Tasks
         forMeasures.add(SystemMergeTask.class);
@@ -192,6 +195,7 @@ public class PageStep
     }
 
     //~ Constructors -------------------------------------------------------------------------------
+
     /**
      * Creates a new <code>PageStep</code> object.
      */
@@ -200,18 +204,54 @@ public class PageStep
     }
 
     //~ Methods ------------------------------------------------------------------------------------
+
     //------//
     // doit //
     //------//
     @Override
     public void doit (Sheet sheet)
-            throws StepException
+        throws StepException
     {
         // Clean up gutter between systems one under the other
         new SheetReduction(sheet).process();
 
         for (Page page : sheet.getPages()) {
             processPage(page);
+        }
+    }
+
+    //---------------//
+    // doProcessPage //
+    //---------------//
+    private void doProcessPage (Page page,
+                                Impact impact)
+    {
+        if (impact.onParts) {
+            // Collate parts into logicals
+            final Score score = page.getScore();
+            final List<SheetStub> theStubs = score.getBook().getValidSelectedStubs();
+            new ScoreReduction(score).reduce(theStubs);
+        }
+
+        if (impact.onMeasures) {
+            // Merge / renumber measure stacks within the page
+            new MeasureFixer().process(page);
+        }
+
+        if (impact.onSlurs) {
+            // Inter-system slurs connections
+            page.connectOrphanSlurs();
+            page.checkPageCrossTies();
+        }
+
+        if (impact.onLyrics) {
+            // Lyrics
+            refineLyrics(page);
+        }
+
+        if (impact.onVoices) {
+            // Refine voices IDs (and thus colors) across all systems of the page
+            Voices.refinePage(page);
         }
     }
 
@@ -319,21 +359,6 @@ public class PageStep
         }
     }
 
-    //-----------//
-    // getImpact //
-    //-----------//
-    private static Impact getImpact (Map<Page, Impact> map,
-                                     Page page)
-    {
-        Impact impact = map.get(page);
-
-        if (impact == null) {
-            map.put(page, impact = new Impact());
-        }
-
-        return impact;
-    }
-
     //--------------//
     // isImpactedBy //
     //--------------//
@@ -349,39 +374,6 @@ public class PageStep
     public void processPage (Page page)
     {
         doProcessPage(page, WHOLE_IMPACT);
-    }
-
-    //---------------//
-    // doProcessPage //
-    //---------------//
-    private void doProcessPage (Page page,
-                                Impact impact)
-    {
-        if (impact.onParts) {
-            // Connect parts across systems in the page
-            new PageReduction(page).reduce();
-        }
-
-        if (impact.onMeasures) {
-            // Merge / renumber measure stacks within the page
-            new MeasureFixer().process(page);
-        }
-
-        if (impact.onSlurs) {
-            // Inter-system slurs connections
-            page.connectOrphanSlurs();
-            page.checkPageCrossTies();
-        }
-
-        if (impact.onLyrics) {
-            // Lyrics
-            refineLyrics(page);
-        }
-
-        if (impact.onVoices) {
-            // Refine voices IDs (and thus colors) across all systems of the page
-            Voices.refinePage(page);
-        }
     }
 
     //--------------//
@@ -402,7 +394,25 @@ public class PageStep
         }
     }
 
+    //~ Static Methods -----------------------------------------------------------------------------
+
+    //-----------//
+    // getImpact //
+    //-----------//
+    private static Impact getImpact (Map<Page, Impact> map,
+                                     Page page)
+    {
+        Impact impact = map.get(page);
+
+        if (impact == null) {
+            map.put(page, impact = new Impact());
+        }
+
+        return impact;
+    }
+
     //~ Inner Classes ------------------------------------------------------------------------------
+
     //--------//
     // Impact //
     //--------//

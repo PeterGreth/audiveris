@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -36,12 +36,14 @@ public class KeyFlatSymbol
     /**
      * Creates a new KeyFlatSymbol object.
      *
-     * @param key   the key value: -7..-1 for flats
-     * @param shape the related shape
+     * @param key    the key value: -7..-1 for flats
+     * @param shape  the related shape
+     * @param family the selected MusicFont family
      */
     public KeyFlatSymbol (int key,
-                          Shape shape)
+                          Shape shape,
+                          MusicFamily family)
     {
-        super(key, shape, Symbols.CODE_FLAT);
+        super(key, shape, family, Shape.FLAT);
     }
 }

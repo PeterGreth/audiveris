@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -52,30 +52,20 @@ public class RestSymbol
     private static final Logger logger = LoggerFactory.getLogger(RestSymbol.class);
 
     //~ Constructors -------------------------------------------------------------------------------
+
     /**
      * Create a RestSymbol (with decoration?) standard size.
      *
-     * @param shape the precise shape
-     * @param codes precise code for rest part
+     * @param shape  the precise shape (LONG_REST, BREVE_REST, WHOLE_REST, HALF_REST, HW_REST_set)
+     * @param family the musicFont family
      */
     public RestSymbol (Shape shape,
-                       int... codes)
+                       MusicFamily family)
     {
-        super(shape, codes);
+        super(shape, family);
     }
 
     //~ Methods ------------------------------------------------------------------------------------
-    //--------------------//
-    // supportsDecoration //
-    //--------------------//
-    @Override
-    protected boolean supportsDecoration ()
-    {
-        return (shape == BREVE_REST)
-                       || (shape == LONG_REST)
-                       || (shape == WHOLE_REST)
-                       || (shape == HALF_REST);
-    }
 
     //-----------//
     // getParams //
@@ -86,7 +76,7 @@ public class RestSymbol
         final MyParams p = new MyParams();
 
         // Rest symbol layout
-        p.layout = font.layout(getString());
+        p.layout = font.layoutShapeByCode(shape);
 
         final Rectangle2D rs = p.layout.getBounds();
 
@@ -95,7 +85,7 @@ public class RestSymbol
             p.offset = new Point2D.Double(0, getYOffset(rs.getHeight()));
 
             // Lines layout
-            p.linesLayout = font.layout(Symbols.SYMBOL_STAFF_LINES.getString());
+            p.linesLayout = font.layoutShapeByCode(Shape.STAFF_LINES);
             p.rect = p.linesLayout.getBounds();
         } else {
             p.rect = rs;
@@ -154,7 +144,18 @@ public class RestSymbol
         MusicFont.paint(g, p.layout, loc, AREA_CENTER);
     }
 
+    //--------------------//
+    // supportsDecoration //
+    //--------------------//
+    @Override
+    protected boolean supportsDecoration ()
+    {
+        return (shape == BREVE_REST) || (shape == LONG_REST) || (shape == WHOLE_REST)
+                || (shape == HALF_REST);
+    }
+
     //~ Inner Classes ------------------------------------------------------------------------------
+
     //--------//
     // Params //
     //--------//

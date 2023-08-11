@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -37,16 +37,17 @@ public class DecorableSymbol
     /**
      * Create a DecorableSymbol with the provided shape and codes.
      *
-     * @param shape the related shape
-     * @param codes the codes for MusicFont characters
+     * @param shape  the related shape
+     * @param family the MusicFont family
      */
     public DecorableSymbol (Shape shape,
-                            int... codes)
+                            MusicFamily family)
     {
-        super(shape, codes);
+        super(shape, family);
     }
 
     //~ Methods ------------------------------------------------------------------------------------
+
     //--------------------//
     // supportsDecoration //
     //--------------------//

@@ -5,7 +5,7 @@
 //------------------------------------------------------------------------------------------------//
 // <editor-fold defaultstate="collapsed" desc="hdr">
 //
-//  Copyright © Audiveris 2022. All rights reserved.
+//  Copyright © Audiveris 2023. All rights reserved.
 //
 //  This program is free software: you can redistribute it and/or modify it under the terms of the
 //  GNU Affero General Public License as published by the Free Software Foundation, either version
@@ -41,17 +41,19 @@ public class NonDraggableSymbol
     private static final AffineTransform at = AffineTransform.getScaleInstance(2, 2);
 
     //~ Constructors -------------------------------------------------------------------------------
+
     /**
      * Create an NonDraggableSymbol
      *
-     * @param codes the codes for MusicFont characters
+     * @param family the musicFont family
      */
-    public NonDraggableSymbol (int... codes)
+    public NonDraggableSymbol (MusicFamily family)
     {
-        super(Shape.NON_DRAGGABLE, codes);
+        super(Shape.NON_DRAGGABLE, family);
     }
 
     //~ Methods ------------------------------------------------------------------------------------
+
     //-----------//
     // getParams //
     //-----------//
@@ -60,7 +62,7 @@ public class NonDraggableSymbol
     {
         Params p = new Params();
 
-        p.layout = font.layout(getString(), at);
+        p.layout = font.layoutShapeByCode(shape, at);
         p.rect = p.layout.getBounds();
 
         return p;
